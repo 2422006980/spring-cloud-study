@@ -14,53 +14,71 @@ import java.util.concurrent.TimeUnit;
 public class Thread_04 {
 
     static List<Object> list = new LinkedList<>();
-    static int num = 0;
-    static boolean flag = false;
 
-    public int get(){
-        return list.size();
+    public void get() {
+
+        while (true) {
+            synchronized (list) {
+                if (list.size() > 0) {
+                    list.remove(0);
+                    System.out.println(Thread.currentThread().getName() + "-开始消费--" + list.size());
+                    list.notifyAll();
+
+                } else {
+                    try {
+                        System.out.println(Thread.currentThread().getName() + "-余额不足");
+                        list.wait();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
     }
 
-    public void put(int i){
-        list.add("a" + i);
+    public void put() {
+
+        while (true) {
+            synchronized (list) {
+                if (list.size() >= 6) {
+                    System.out.println(Thread.currentThread().getName() + "-生产满了");
+                    try {
+                        list.wait();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+                list.add(1);
+                System.out.println(Thread.currentThread().getName() + "-开始生产--" + list.size());
+                list.notifyAll();
+            }
+        }
     }
 
     public static void main(String[] args) {
-        Thread_04 t4 = new Thread_04();
-
-        //生产者
-        Thread t1 = new Thread(() -> {
-            synchronized(t4){
-                while (!flag){
-                    num ++;
-                    if(t4.get() > 10){
-                        System.out.println("生产满了");
-                        try {
-                            t4.wait();
-                            flag = false;
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                    System.out.println("开始生产--" + num);
-                    t4.put(num);
-                }
-                System.out.println("生产结束");
+        Thread_04 aaa = new Thread_04();
+        for (int i = 0; i < 5; i++) {
+            try {
+                TimeUnit.SECONDS.sleep(1);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
-        });
+            new Thread(() -> {
+                aaa.put();
+            }).start();
+        }
 
-        //消费
-        Thread t2 = new Thread(() -> {
-            synchronized(t4){
-                while (flag) {
-                    if (t4.get()>0){
-                        list.remove(0);
-                        System.out.println("开始消费--" + t4.get());
-                        t4.notify();
-                    }
-                }
+        for (int i = 0; i < 5; i++) {
+            try {
+                TimeUnit.SECONDS.sleep(3);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
-        });
+            new Thread(() -> {
+                aaa.get();
+            }).start();
+        }
 
     }
+
 }
